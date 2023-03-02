@@ -14,3 +14,7 @@ options:
     default: true
     description: Whether this is a standalone Juju controller
     type: boolean
+  ca-cert:
+    default: ""
+    description: CA certificate for Prometheus endpoint
+    type: string

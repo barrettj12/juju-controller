@@ -7,6 +7,7 @@ import os
 import yaml
 
 from charmhelpers.core import hookenv
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus
@@ -26,6 +27,8 @@ class JujuControllerCharm(CharmBase):
             self.on.dashboard_relation_joined, self._on_dashboard_relation_joined)
         self.framework.observe(
             self.on.website_relation_joined, self._on_website_relation_joined)
+        self.framework.observe(
+            self.on.metrics_endpoint_relation_created, self._on_metrics_endpoint_relation_created)
 
     def _on_start(self, _):
         self.unit.status = ActiveStatus()
@@ -62,6 +65,29 @@ class JujuControllerCharm(CharmBase):
             'private-address': ingress_address,
             'port': str(port)
         })
+
+    def _on_metrics_endpoint_relation_created(self, event):
+        logger.info("Prometheus relation created: %r", event)
+        self.metrics_endpoint = MetricsEndpointProvider(self, jobs = [
+            {
+                "job_name": "juju",
+                "metrics_path": "/introspection/metrics",
+                "static_configs": [
+                    {
+                        "targets": ["*:17070"]
+                    }
+                ],
+                #### These settings not allowed by library
+                "scheme": "https",
+                "basic_auth": {
+                    "username": "user-prometheus",
+                    "password": "1234"
+                },
+                "tls_config": {
+                    "ca_file": self.config["ca-cert"],
+                },
+            }
+        ])
 
 
 def api_port():
